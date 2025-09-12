@@ -4,12 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CogniScan AI - PDF Text Tool</title>
-    <!-- Tailwind CSS for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js library for PDF parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    <!-- html-docx-js for Word document conversion -->
-    <script src="https://unpkg.com/html-docx-js-typescript@1.8.0/dist/html-docx.js"></script>
     <link rel="stylesheet" href="./index.css">
     
     <!-- Favicon and App Icon Links -->
@@ -19,16 +15,17 @@
     <link rel="manifest" href="/site.webmanifest">
     <meta name="msapplication-TileColor" content="#da532c">
     <meta name="theme-color" content="#ffffff">
-
 <script type="importmap">
 {
   "imports": {
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.19.0",
     "marked": "https://aistudiocdn.com/marked@^16.2.1",
-    "vite": "https://aistudiocdn.com/vite@^7.1.5"
+    "vite": "https://aistudiocdn.com/vite@^7.1.5",
+    "html-docx-js-typescript": "https://aistudiocdn.com/html-docx-js-typescript@^0.1.5"
   }
 }
 </script>
+<link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-gray-50 min-h-screen flex items-start justify-center p-4 sm:p-6 md:p-8">
     <div class="bg-white rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-5xl border border-gray-200">
@@ -171,7 +168,7 @@
         </div>
     </div>
 
-
     <script type="module" src="./index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>

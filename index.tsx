@@ -1,12 +1,10 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { marked } from "marked";
+import { asBlob } from 'html-docx-js-typescript';
+import './index.css';
 
 // Fix: Declare pdfjsLib to avoid 'Cannot find name' error.
 declare const pdfjsLib: any;
-
-// Fix: Add ambient declaration for the html-docx-js-typescript library.
-declare const htmlDocx: any;
 
 // Set the worker source for PDF.js
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
@@ -692,12 +690,12 @@ downloadDocxBtn.addEventListener('click', async (e) => {
         return `<h2>Page ${pageNum}</h2>\n${pageHtml}`;
     });
     const allFormattedHtmlArray = await Promise.all(formattedHtmlPromises);
-    // FIX: Provide a simple HTML fragment to the docx library to prevent it from crashing.
     const combinedHtml = allFormattedHtmlArray.join('<hr />');
 
     if (combinedHtml.trim()) {
         try {
-            const fileBlob = await htmlDocx.asBlob(combinedHtml);
+            // FIX: Use the imported asBlob function directly.
+            const fileBlob = await asBlob(combinedHtml);
             downloadFile(fileBlob, 'formatted_document.docx');
         } catch(err) {
             console.error("Error creating docx file:", err);
