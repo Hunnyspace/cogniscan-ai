@@ -1,11 +1,12 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { marked } from "marked";
 
 // Fix: Declare pdfjsLib to avoid 'Cannot find name' error.
 declare const pdfjsLib: any;
 
-// Fix: Add ambient declaration for process.env.API_KEY to satisfy TypeScript and align with guidelines.
-declare const process: { env: { API_KEY: string; } };
+// Fix: Add ambient declaration for the html-docx-js-typescript library.
+declare const htmlDocx: any;
 
 // Set the worker source for PDF.js
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
@@ -34,6 +35,8 @@ const downloadBtn = document.getElementById('downloadBtn') as HTMLButtonElement;
 const downloadOptions = document.getElementById('downloadOptions') as HTMLDivElement;
 const downloadMdBtn = document.getElementById('downloadMdBtn') as HTMLButtonElement;
 const downloadHtmlBtn = document.getElementById('downloadHtmlBtn') as HTMLButtonElement;
+const downloadDocxBtn = document.getElementById('downloadDocxBtn') as HTMLButtonElement;
+
 
 const summaryModalEl = document.getElementById('summaryModal') as HTMLDivElement;
 const summaryContentEl = document.getElementById('summaryContent') as HTMLDivElement;
@@ -71,7 +74,7 @@ let formattedCurrentPage: number = 1;
 // Initialize Google GenAI
 let ai;
 try {
-    // Fix: Use process.env.API_KEY as per @google/genai guidelines.
+    // Fix: The API key must be obtained from process.env.API_KEY.
     ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 } catch (error) {
     console.error("Failed to initialize GoogleGenAI:", error);
@@ -561,8 +564,8 @@ function findAndHighlight(container: HTMLElement, query: string) {
     });
 }
 
-function downloadFile(content: string, fileName: string, mimeType: string) {
-    const blob = new Blob([content], { type: mimeType });
+function downloadFile(content: string | Blob, fileName: string, mimeType?: string) {
+    const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -682,6 +685,30 @@ downloadHtmlBtn.addEventListener('click', async (e) => {
     downloadOptions.classList.add('hidden');
 });
 
+downloadDocxBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const formattedHtmlPromises = Object.keys(formattedPagesContent).map(Number).sort((a, b) => a - b).map(async (pageNum) => {
+        const pageHtml = await marked.parse(formattedPagesContent[pageNum]);
+        return `<h2>Page ${pageNum}</h2>\n${pageHtml}`;
+    });
+    const allFormattedHtmlArray = await Promise.all(formattedHtmlPromises);
+    const combinedHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Formatted Document</title></head><body>${allFormattedHtmlArray.join('<br page-break-before="always" />')}</body></html>`;
+
+    if (combinedHtml.trim()) {
+        try {
+            const fileBlob = await htmlDocx.asBlob(combinedHtml);
+            downloadFile(fileBlob, 'formatted_document.docx');
+        } catch(err) {
+            console.error("Error creating docx file:", err);
+            showMessage(errorMessageEl, 'Could not create .docx file.', 'error');
+        }
+    } else {
+        showMessage(errorMessageEl, 'No formatted text to download.', 'error');
+    }
+    downloadOptions.classList.add('hidden');
+});
+
+
 const pageNavListener = async (isNext: boolean, isExtracted: boolean) => {
     const content = isExtracted ? extractedPagesContent : formattedPagesContent;
     let currentPage = isExtracted ? extractedCurrentPage : formattedCurrentPage;
@@ -748,3 +775,8 @@ copySummaryBtn.addEventListener('click', async () => {
         }
     }
 });
+
+// Initial Setup
+(async () => {
+    await updateFormattedView();
+})();
