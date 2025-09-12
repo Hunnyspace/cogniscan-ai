@@ -692,7 +692,8 @@ downloadDocxBtn.addEventListener('click', async (e) => {
         return `<h2>Page ${pageNum}</h2>\n${pageHtml}`;
     });
     const allFormattedHtmlArray = await Promise.all(formattedHtmlPromises);
-    const combinedHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Formatted Document</title></head><body>${allFormattedHtmlArray.join('<br page-break-before="always" />')}</body></html>`;
+    // FIX: Provide a simple HTML fragment to the docx library to prevent it from crashing.
+    const combinedHtml = allFormattedHtmlArray.join('<hr />');
 
     if (combinedHtml.trim()) {
         try {
