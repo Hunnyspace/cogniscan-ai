@@ -8,16 +8,18 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js library for PDF parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- html-docx-js for Word document conversion -->
+    <script src="https://unpkg.com/html-docx-js-typescript@1.8.0/dist/html-docx.js"></script>
     <link rel="stylesheet" href="./index.css">
     <script type="importmap">
-    {
-      "imports": {
-        "@google/genai": "https://aistudiocdn.com/@google/genai@^1.19.0",
-        "marked": "https://aistudiocdn.com/marked@^16.2.1"
-      }
-    }
-    </script>
-<link rel="stylesheet" href="/index.css">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.19.0",
+    "marked": "https://aistudiocdn.com/marked@^16.2.1",
+    "vite": "https://aistudiocdn.com/vite@^7.1.5"
+  }
+}
+</script>
 </head>
 <body class="bg-gray-50 min-h-screen flex items-start justify-center p-4 sm:p-6 md:p-8">
     <div class="bg-white rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-5xl border border-gray-200">
@@ -123,7 +125,8 @@
                 <button id="summarizeBtn" class="bg-teal-500 text-white rounded-lg px-5 py-2.5 font-semibold hover:bg-teal-600 transition duration-300 transform active:scale-95 shadow-md">Summarize Content</button>
                 <div class="relative inline-block">
                     <button id="downloadBtn" class="bg-green-600 text-white rounded-lg px-5 py-2.5 font-semibold hover:bg-green-700 transition duration-300 transform active:scale-95 shadow-md w-full sm:w-auto">Download As...</button>
-                    <div id="downloadOptions" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
+                    <div id="downloadOptions" class="hidden absolute right-0 bottom-full mb-2 w-48 bg-white rounded-md shadow-lg z-10 border">
+                        <a href="#" id="downloadDocxBtn" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-semibold">Word Document (.docx)</a>
                         <a href="#" id="downloadMdBtn" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Markdown (.md)</a>
                         <a href="#" id="downloadHtmlBtn" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">HTML (.html)</a>
                     </div>
@@ -161,6 +164,5 @@
 
 
     <script type="module" src="./index.tsx"></script>
-<script type="module" src="/index.tsx"></script>
 </body>
 </html>
