@@ -10,9 +10,8 @@
   },
   "dependencies": {
     "@google/genai": "^0.14.0",
-    "html-docx-js-typescript": "1.5.0",
-    "marked": "^13.0.1",
-    "pdf-lib": "^1.17.1"
+    "html-docx-js-typescript": "^0.1.5",
+    "marked": "^13.0.1"
   },
   "devDependencies": {
     "@types/marked": "^6.0.0",
