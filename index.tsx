@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { marked } from "marked";
 import { asBlob } from 'html-docx-js-typescript';
@@ -690,12 +691,14 @@ downloadDocxBtn.addEventListener('click', async (e) => {
         return `<h2>Page ${pageNum}</h2>\n${pageHtml}`;
     });
     const allFormattedHtmlArray = await Promise.all(formattedHtmlPromises);
-    const combinedHtml = allFormattedHtmlArray.join('<hr />');
+    const combinedHtml = allFormattedHtmlArray.join('<hr style="page-break-after: always; visibility: hidden;" />');
 
     if (combinedHtml.trim()) {
         try {
-            // FIX: Use the imported asBlob function directly.
-            const fileBlob = await asBlob(combinedHtml);
+            // FIX: To solve character encoding issues, wrap the content in a full HTML document with a UTF-8 meta tag.
+            const fullHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Formatted Document</title></head><body>${combinedHtml}</body></html>`;
+            // FIX: Cast result to Blob as asBlob returns Blob in browser but has a broader type.
+            const fileBlob = await asBlob(fullHtml) as Blob;
             downloadFile(fileBlob, 'formatted_document.docx');
         } catch(err) {
             console.error("Error creating docx file:", err);
