@@ -695,8 +695,15 @@ downloadDocxBtn.addEventListener('click', async (e) => {
 
     if (combinedHtml.trim()) {
         try {
-            // FIX: To solve character encoding issues, wrap the content in a full HTML document with a UTF-8 meta tag.
-            const fullHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Formatted Document</title></head><body>${combinedHtml}</body></html>`;
+            // FIX: Add a style block to ensure table borders are visible in the docx file.
+            const docStyles = `
+                <style>
+                    table { border-collapse: collapse; width: 100%; }
+                    th, td { border: 1px solid black; padding: 8px; }
+                </style>
+            `;
+            // FIX: To solve character encoding issues, wrap the content in a full HTML document with a UTF-8 meta tag and styles.
+            const fullHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Formatted Document</title>${docStyles}</head><body>${combinedHtml}</body></html>`;
             // FIX: Cast result to Blob as asBlob returns Blob in browser but has a broader type.
             const fileBlob = await asBlob(fullHtml) as Blob;
             downloadFile(fileBlob, 'formatted_document.docx');
