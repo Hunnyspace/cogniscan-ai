@@ -42,6 +42,9 @@ const summaryContentEl = document.getElementById('summaryContent') as HTMLDivEle
 const closeSummaryModalBtn = document.getElementById('closeSummaryModalBtn') as HTMLButtonElement;
 const copySummaryBtn = document.getElementById('copySummaryBtn') as HTMLButtonElement;
 
+const downloadInfoModalEl = document.getElementById('downloadInfoModal') as HTMLDivElement;
+const closeDownloadInfoModalBtn = document.getElementById('closeDownloadInfoModalBtn') as HTMLButtonElement;
+
 const extractedPageCounterEl = document.getElementById('extractedPageCounter') as HTMLSpanElement;
 const prevExtractedPageBtn = document.getElementById('prevExtractedPageBtn') as HTMLButtonElement;
 const nextExtractedPageBtn = document.getElementById('nextExtractedPageBtn') as HTMLButtonElement;
@@ -686,6 +689,9 @@ downloadHtmlBtn.addEventListener('click', async (e) => {
 
 downloadDocxBtn.addEventListener('click', async (e) => {
     e.preventDefault();
+    
+    downloadInfoModalEl.classList.remove('hidden');
+
     const formattedHtmlPromises = Object.keys(formattedPagesContent).map(Number).sort((a, b) => a - b).map(async (pageNum) => {
         const pageHtml = await marked.parse(formattedPagesContent[pageNum]);
         return `<h2>Page ${pageNum}</h2>\n${pageHtml}`;
@@ -785,7 +791,12 @@ copySummaryBtn.addEventListener('click', async () => {
     }
 });
 
+// Download Info Modal Listener
+closeDownloadInfoModalBtn.addEventListener('click', () => {
+    downloadInfoModalEl.classList.add('hidden');
+});
+
 // Initial Setup
 (async () => {
     await updateFormattedView();
-})();
+})();v

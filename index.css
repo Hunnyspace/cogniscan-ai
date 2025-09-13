@@ -95,16 +95,16 @@ button:disabled {
     font-weight: 600;
 }
 
-/* Summary Modal Styles */
-#summaryModal {
+/* Modal Styles */
+#summaryModal, #downloadInfoModal {
     transition: opacity 0.3s ease;
 }
 
-#summaryModal > div {
+#summaryModal > div, #downloadInfoModal > div {
     transition: transform 0.3s ease;
     transform: scale(0.95);
 }
 
-#summaryModal:not(.hidden) > div {
+#summaryModal:not(.hidden) > div, #downloadInfoModal:not(.hidden) > div {
     transform: scale(1);
 }
