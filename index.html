@@ -6,6 +6,8 @@
     <title>CogniScan AI - PDF Text Tool</title>
     <!-- PDF.js library for PDF parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- JsBarcode library for barcode generation -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <link rel="stylesheet" href="./index.css">
     
     <!-- Favicon and App Icon Links -->
@@ -21,7 +23,8 @@
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.19.0",
     "marked": "https://aistudiocdn.com/marked@^16.2.1",
     "html-docx-js-typescript": "https://aistudiocdn.com/html-docx-js-typescript@^0.1.5",
-    "vite": "https://aistudiocdn.com/vite@^7.1.5"
+    "vite": "https://aistudiocdn.com/vite@^7.1.5",
+    "pdf-lib": "https://aistudiocdn.com/pdf-lib@^1.17.1"
   }
 }
 </script>
@@ -136,6 +139,10 @@
                         <a href="#" id="downloadHtmlBtn" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">HTML (.html)</a>
                     </div>
                 </div>
+                 <!-- New Feature Buttons -->
+                <button id="bookCoverBtn" class="gradient-btn">Create Book Cover</button>
+                <button id="generateForewordBtn" class="gradient-btn">Generate Foreword</button>
+                <button id="mergePdfsBtn" class="gradient-btn">Merge PDFs</button>
             </div>
         </div>
 
@@ -146,11 +153,13 @@
                 <a href="https://in.linkedin.com/in/anuroopbatta99" target="_blank" rel="noopener noreferrer" class="font-semibold text-blue-600 hover:underline">
                     Anuroop Batta
                 </a>
-                , Founder of Hunnyspace.
+                , Founder of Hunnyspace. Version 2.0
             </p>
         </footer>
     </div>
     
+    <!-- MODALS SECTION -->
+
     <!-- Follow Gate Modal -->
     <div id="followGateModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 sm:p-8 text-center">
@@ -203,6 +212,117 @@
             </main>
         </div>
     </div>
+
+    <!-- What's New Modal -->
+    <div id="whatsNewModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg">
+            <header class="flex justify-between items-center p-4 border-b bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                <h2 class="text-xl font-bold">🚀 What's New in Version 2.0</h2>
+                <button id="closeWhatsNewModalBtn" class="text-white hover:text-gray-200 text-2xl" aria-label="Close Modal">&times;</button>
+            </header>
+            <main class="p-6 text-gray-700 text-left space-y-4">
+                <div>
+                    <h3 class="font-semibold text-lg text-gray-800">🎨 AI Book Cover Studio</h3>
+                    <p>Create a professional book cover! The AI can generate titles, captions, and unique cover art based on your text and a reference image. Includes barcode generation!</p>
+                </div>
+                 <div>
+                    <h3 class="font-semibold text-lg text-gray-800">✍️ AI Foreword Generator</h3>
+                    <p>Let the AI analyze your entire document and write a compelling foreword for you in seconds.</p>
+                </div>
+                 <div>
+                    <h3 class="font-semibold text-lg text-gray-800">📚 PDF Merge Utility</h3>
+                    <p>Easily combine multiple PDF files into a single, cohesive document.</p>
+                </div>
+            </main>
+             <footer class="p-4 text-center">
+                <button id="gotItWhatsNewBtn" class="bg-blue-600 text-white rounded-lg px-5 py-2.5 font-semibold hover:bg-blue-700 transition duration-300">Got It!</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Foreword Modal -->
+    <div id="forewordModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <header class="flex justify-between items-center p-4 border-b">
+                <h2 class="text-xl font-bold text-gray-800">AI-Generated Foreword</h2>
+                <button id="closeForewordModalBtn" class="text-gray-500 hover:text-gray-800 text-2xl" aria-label="Close Foreword">&times;</button>
+            </header>
+            <main id="forewordContent" class="p-6 overflow-y-auto text-gray-700 whitespace-pre-wrap">
+                <!-- Foreword will be injected here -->
+            </main>
+            <footer class="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg">
+                <button id="copyForewordBtn" class="bg-blue-600 text-white rounded-lg px-4 py-2 font-semibold hover:bg-blue-700 transition duration-300">Copy Foreword</button>
+            </footer>
+        </div>
+    </div>
+    
+    <!-- PDF Merge Modal -->
+    <div id="pdfMergeModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg">
+            <header class="flex justify-between items-center p-4 border-b">
+                <h2 class="text-xl font-bold text-gray-800">Merge PDF Files</h2>
+                <button id="closePdfMergeModalBtn" class="text-gray-500 hover:text-gray-800 text-2xl" aria-label="Close Modal">&times;</button>
+            </header>
+            <main class="p-6 text-gray-700 text-left">
+                <p class="mb-4">Select two or more PDF files to combine them into a single document. The files will be merged in the order you select them.</p>
+                <input type="file" id="pdfMergeInput" accept="application/pdf" multiple class="w-full text-gray-700 bg-white border border-gray-300 rounded-lg p-2.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            </main>
+             <footer class="p-4 text-right">
+                <button id="executeMergeBtn" class="bg-green-600 text-white rounded-lg px-5 py-2.5 font-semibold hover:bg-green-700 transition duration-300" disabled>Merge & Download</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Book Cover Studio Modal -->
+    <div id="bookCoverModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] flex flex-col">
+            <header class="flex justify-between items-center p-4 border-b">
+                <h2 class="text-xl font-bold text-gray-800">AI Book Cover Studio</h2>
+                <button id="closeBookCoverModalBtn" class="text-gray-500 hover:text-gray-800 text-2xl" aria-label="Close Studio">&times;</button>
+            </header>
+            <main class="p-6 overflow-y-auto flex-grow grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Left Side: Inputs and Generation -->
+                <div class="space-y-4">
+                    <!-- Step 1: Details -->
+                    <div>
+                        <h3 class="font-semibold text-lg text-gray-800 mb-2">Step 1: Book Details</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <input type="text" id="coverAuthorInput" placeholder="Author Name" class="form-input">
+                            <input type="text" id="coverPriceInput" placeholder="Price (e.g., 19.99)" class="form-input">
+                            <input type="text" id="coverIsbnInput" placeholder="ISBN (optional)" class="form-input col-span-full">
+                        </div>
+                    </div>
+                     <!-- Step 2: AI Titles & Captions -->
+                    <div>
+                        <h3 class="font-semibold text-lg text-gray-800 mb-2">Step 2: AI Content Ideas</h3>
+                        <button id="generateTitlesBtn" class="w-full bg-blue-500 text-white rounded-lg p-2 font-semibold hover:bg-blue-600 transition">Generate Titles & Captions</button>
+                        <div id="titlesSpinner" class="hidden text-center p-2">Generating...</div>
+                        <div id="titlesOutput" class="mt-2 space-y-2 max-h-40 overflow-y-auto"></div>
+                    </div>
+                     <!-- Step 3: AI Image -->
+                    <div>
+                        <h3 class="font-semibold text-lg text-gray-800 mb-2">Step 3: AI Cover Image</h3>
+                         <div class="space-y-2">
+                            <label class="block text-sm font-medium text-gray-700">Upload Reference Image (Optional)</label>
+                            <input type="file" id="coverReferenceImage" accept="image/*" class="form-input-file">
+                            <textarea id="coverPromptInput" rows="3" placeholder="Describe your cover art... (e.g., 'An ancient oak tree under a starry sky, minimalist style')" class="form-input w-full"></textarea>
+                            <button id="generateImageBtn" class="w-full bg-purple-500 text-white rounded-lg p-2 font-semibold hover:bg-purple-600 transition">Generate Image</button>
+                            <div id="imageSpinner" class="hidden text-center p-2">Generating Image (this may take a moment)...</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Right Side: Preview and Download -->
+                <div class="flex flex-col items-center">
+                    <h3 class="font-semibold text-lg text-gray-800 mb-2">Live Preview</h3>
+                    <div class="bg-gray-100 border rounded-md w-full aspect-[2/3] flex items-center justify-center">
+                        <canvas id="coverCanvas" class="w-full h-full"></canvas>
+                    </div>
+                    <button id="downloadCoverBtn" class="mt-4 w-full bg-green-600 text-white rounded-lg p-3 font-semibold hover:bg-green-700 transition" disabled>Assemble & Download Cover</button>
+                </div>
+            </main>
+        </div>
+    </div>
+
 
     <script type="module" src="./index.tsx"></script>
 </body>

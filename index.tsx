@@ -1,17 +1,17 @@
-
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { marked } from "marked";
 import { asBlob } from 'html-docx-js-typescript';
+import { PDFDocument } from 'pdf-lib';
 import './index.css';
 
-// Fix: Declare pdfjsLib to avoid 'Cannot find name' error.
+// Declare third-party libraries loaded via script tags
 declare const pdfjsLib: any;
+declare const JsBarcode: any;
 
 // Set the worker source for PDF.js
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
-// Get DOM elements
-// Fix: Cast elements to their specific types to access properties like 'value' and 'disabled'.
+// --- Get DOM Elements ---
 const pdfFileEl = document.getElementById('pdfFile') as HTMLInputElement;
 const pageNumbersEl = document.getElementById('pageNumbers') as HTMLInputElement;
 const extractTextBtn = document.getElementById('extractTextBtn') as HTMLButtonElement;
@@ -19,14 +19,12 @@ const smartFormatBtn = document.getElementById('smartFormatBtn') as HTMLButtonEl
 const clearBtn = document.getElementById('clearBtn') as HTMLButtonElement;
 const extractedContentEl = document.getElementById('extractedContent') as HTMLDivElement;
 const formattedContentEl = document.getElementById('formattedContent') as HTMLDivElement;
-
 const progressContainerEl = document.getElementById('progressContainer') as HTMLDivElement;
 const progressBarEl = document.getElementById('progressBar') as HTMLDivElement;
 const processTimeMessageEl = document.getElementById('processTimeMessage') as HTMLParagraphElement;
 const errorMessageEl = document.getElementById('errorMessage') as HTMLParagraphElement;
 const successMessageEl = document.getElementById('successMessage') as HTMLParagraphElement;
 const apiStatusMessageEl = document.getElementById('apiStatusMessage') as HTMLParagraphElement;
-
 const copyFormattedTextBtn = document.getElementById('copyFormattedTextBtn') as HTMLButtonElement;
 const reformatSelectionBtn = document.getElementById('reformatSelectionBtn') as HTMLButtonElement;
 const summarizeBtn = document.getElementById('summarizeBtn') as HTMLButtonElement;
@@ -35,16 +33,12 @@ const downloadOptions = document.getElementById('downloadOptions') as HTMLDivEle
 const downloadMdBtn = document.getElementById('downloadMdBtn') as HTMLButtonElement;
 const downloadHtmlBtn = document.getElementById('downloadHtmlBtn') as HTMLButtonElement;
 const downloadDocxBtn = document.getElementById('downloadDocxBtn') as HTMLButtonElement;
-
-
 const summaryModalEl = document.getElementById('summaryModal') as HTMLDivElement;
 const summaryContentEl = document.getElementById('summaryContent') as HTMLDivElement;
 const closeSummaryModalBtn = document.getElementById('closeSummaryModalBtn') as HTMLButtonElement;
 const copySummaryBtn = document.getElementById('copySummaryBtn') as HTMLButtonElement;
-
 const downloadInfoModalEl = document.getElementById('downloadInfoModal') as HTMLDivElement;
 const closeDownloadInfoModalBtn = document.getElementById('closeDownloadInfoModalBtn') as HTMLButtonElement;
-
 const extractedPageCounterEl = document.getElementById('extractedPageCounter') as HTMLSpanElement;
 const prevExtractedPageBtn = document.getElementById('prevExtractedPageBtn') as HTMLButtonElement;
 const nextExtractedPageBtn = document.getElementById('nextExtractedPageBtn') as HTMLButtonElement;
@@ -55,97 +49,128 @@ const findInputExtracted = document.getElementById('findInputExtracted') as HTML
 const findBtnExtracted = document.getElementById('findBtnExtracted') as HTMLButtonElement;
 const findInputFormatted = document.getElementById('findInputFormatted') as HTMLInputElement;
 const findBtnFormatted = document.getElementById('findBtnFormatted') as HTMLButtonElement;
-
 const guideEl = document.getElementById('guide') as HTMLDivElement;
 const closeGuideBtn = document.getElementById('closeGuideBtn') as HTMLButtonElement;
-
 const followGateModalEl = document.getElementById('followGateModal') as HTMLDivElement;
 const followCheckboxEl = document.getElementById('followCheckbox') as HTMLInputElement;
 const continueToAppBtn = document.getElementById('continueToAppBtn') as HTMLButtonElement;
 
-const actionButtons = [extractTextBtn, smartFormatBtn, clearBtn, reformatSelectionBtn, copyFormattedTextBtn, downloadBtn, summarizeBtn];
+// --- New Feature Elements (v2.0) ---
+const bookCoverBtn = document.getElementById('bookCoverBtn') as HTMLButtonElement;
+const generateForewordBtn = document.getElementById('generateForewordBtn') as HTMLButtonElement;
+const mergePdfsBtn = document.getElementById('mergePdfsBtn') as HTMLButtonElement;
 
-// App state
-// Fix: Add types for state variables.
+// What's New Modal
+const whatsNewModalEl = document.getElementById('whatsNewModal') as HTMLDivElement;
+const closeWhatsNewModalBtn = document.getElementById('closeWhatsNewModalBtn') as HTMLButtonElement;
+const gotItWhatsNewBtn = document.getElementById('gotItWhatsNewBtn') as HTMLButtonElement;
+
+// Foreword Modal
+const forewordModalEl = document.getElementById('forewordModal') as HTMLDivElement;
+const closeForewordModalBtn = document.getElementById('closeForewordModalBtn') as HTMLButtonElement;
+const forewordContentEl = document.getElementById('forewordContent') as HTMLDivElement;
+const copyForewordBtn = document.getElementById('copyForewordBtn') as HTMLButtonElement;
+
+// PDF Merge Modal
+const pdfMergeModalEl = document.getElementById('pdfMergeModal') as HTMLDivElement;
+const closePdfMergeModalBtn = document.getElementById('closePdfMergeModalBtn') as HTMLButtonElement;
+const pdfMergeInput = document.getElementById('pdfMergeInput') as HTMLInputElement;
+const executeMergeBtn = document.getElementById('executeMergeBtn') as HTMLButtonElement;
+
+// Book Cover Studio Modal
+const bookCoverModalEl = document.getElementById('bookCoverModal') as HTMLDivElement;
+const closeBookCoverModalBtn = document.getElementById('closeBookCoverModalBtn') as HTMLButtonElement;
+const coverAuthorInput = document.getElementById('coverAuthorInput') as HTMLInputElement;
+const coverPriceInput = document.getElementById('coverPriceInput') as HTMLInputElement;
+const coverIsbnInput = document.getElementById('coverIsbnInput') as HTMLInputElement;
+const generateTitlesBtn = document.getElementById('generateTitlesBtn') as HTMLButtonElement;
+const titlesSpinner = document.getElementById('titlesSpinner') as HTMLDivElement;
+const titlesOutput = document.getElementById('titlesOutput') as HTMLDivElement;
+const coverReferenceImage = document.getElementById('coverReferenceImage') as HTMLInputElement;
+const coverPromptInput = document.getElementById('coverPromptInput') as HTMLTextAreaElement;
+const generateImageBtn = document.getElementById('generateImageBtn') as HTMLButtonElement;
+const imageSpinner = document.getElementById('imageSpinner') as HTMLDivElement;
+const coverCanvas = document.getElementById('coverCanvas') as HTMLCanvasElement;
+const downloadCoverBtn = document.getElementById('downloadCoverBtn') as HTMLButtonElement;
+
+const actionButtons = [extractTextBtn, smartFormatBtn, clearBtn, reformatSelectionBtn, copyFormattedTextBtn, downloadBtn, summarizeBtn, bookCoverBtn, generateForewordBtn, mergePdfsBtn];
+
+// --- App State ---
+const APP_VERSION = '2.0';
 let pdfDocument: any = null;
 let originalWords: string[] = [];
-let wordSpans: HTMLSpanElement[] = []; // Store the span elements for quick access
+let wordSpans: HTMLSpanElement[] = []; 
 let selectionStartIndex: number = -1;
 let selectionEndIndex: number = -1;
 let extractedPagesContent: Record<number, string> = {};
 let formattedPagesContent: Record<number, string> = {};
 let extractedCurrentPage: number = 1;
 let formattedCurrentPage: number = 1;
+// Book Cover State
+let coverState = {
+    title: 'Your Book Title',
+    author: '',
+    price: '',
+    isbn: '',
+    referenceImage: null as string | null, // Base64
+    generatedImage: null as string | null, // Base64
+};
 
 // Initialize Google GenAI
 let ai;
 try {
-    // Fix: The API key must be obtained from process.env.API_KEY.
     ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 } catch (error) {
     console.error("Failed to initialize GoogleGenAI:", error);
     showMessage(errorMessageEl, "Could not initialize AI services. Please check your API key configuration.", "error");
 }
 
-
 // --- UI Helper Functions ---
-
 function showMessage(element: HTMLElement, message: string, type: string = 'loading') {
     element.textContent = message;
     element.classList.remove('hidden');
-    if (type === 'error') {
-        element.className = 'text-center text-red-600 font-medium mb-4';
-    } else if (type === 'success') {
-        element.className = 'text-center text-green-600 font-medium mb-4';
-    } else {
-        element.className = 'text-center text-gray-600 font-medium mb-4';
-    }
+    element.className = 'text-center font-medium mb-4 ';
+    if (type === 'error') element.classList.add('text-red-600');
+    else if (type === 'success') element.classList.add('text-green-600');
+    else element.classList.add('text-gray-600');
 }
-
 function hideMessage(element: HTMLElement) {
     element.classList.add('hidden');
     element.textContent = '';
 }
-
 function clearAllMessages() {
-    hideMessage(errorMessageEl);
-    hideMessage(successMessageEl);
-    hideMessage(processTimeMessageEl);
+    [errorMessageEl, successMessageEl, processTimeMessageEl].forEach(hideMessage);
     apiStatusMessageEl.textContent = '';
     progressContainerEl.classList.add('hidden');
 }
-
 function toggleButtons(enable: boolean) {
     actionButtons.forEach(btn => btn.disabled = !enable);
 }
+const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+});
 
-// --- Core PDF and Text Functions ---
-
-// Fix: Add types to function parameters and return value.
+// --- Core PDF and Text Functions (Existing) ---
 function parsePageNumbers(input: string): number[] {
     const ranges = input.split(',').map(s => s.trim()).filter(Boolean);
-    // Fix: Specify Set type.
     const pages = new Set<number>();
     for (const range of ranges) {
         if (range.includes('-')) {
             let [start, end] = range.split('-').map(Number);
             if (!isNaN(start) && !isNaN(end) && start <= end) {
-                // Fix: Ensure pdfDocument is not null before accessing its properties.
                 if(pdfDocument && end > pdfDocument.numPages) end = pdfDocument.numPages;
-                for (let i = start; i <= end; i++) {
-                    pages.add(i);
-                }
+                for (let i = start; i <= end; i++) pages.add(i);
             }
         } else {
             const pageNum = Number(range);
-            if (!isNaN(pageNum)) {
-                pages.add(pageNum);
-            }
+            if (!isNaN(pageNum)) pages.add(pageNum);
         }
     }
     return Array.from(pages).sort((a, b) => a - b);
 }
-
 function updateExtractedView() {
     const pageNum = extractedCurrentPage;
     const pageContent = extractedPagesContent[pageNum];
@@ -168,7 +193,6 @@ function updateExtractedView() {
     wordsOnPage.forEach(word => {
         const span = document.createElement('span');
         span.textContent = word;
-        // Fix: Convert number to string for setAttribute
         span.setAttribute('data-word-index', String(originalWords.length));
         span.classList.add('word');
         fragment.appendChild(span);
@@ -183,8 +207,6 @@ function updateExtractedView() {
     prevExtractedPageBtn.disabled = pageNum <= Math.min(...pageKeys);
     nextExtractedPageBtn.disabled = pageNum >= Math.max(...pageKeys);
 }
-
-// Fix: Make function async to handle async marked.parse()
 async function updateFormattedView() {
     const pageNum = formattedCurrentPage;
     const pageContent = formattedPagesContent[pageNum];
@@ -205,13 +227,11 @@ async function updateFormattedView() {
         nextFormattedPageBtn.disabled = true;
         return;
     }
-    // Fix: await marked.parse as it can return a Promise
     formattedContentEl.innerHTML = await marked.parse(pageContent);
     formattedPageCounterEl.textContent = `${pageKeys.indexOf(pageNum) + 1}/${pageKeys.length}`;
     prevFormattedPageBtn.disabled = pageNum <= Math.min(...pageKeys);
     nextFormattedPageBtn.disabled = pageNum >= Math.max(...pageKeys);
 }
-
 async function extractTextFromPDF() {
     clearAllMessages();
     await updateFormattedView();
@@ -267,7 +287,6 @@ async function extractTextFromPDF() {
         toggleButtons(true);
     }
 }
-
 function handleRightClickSelection(event: MouseEvent) {
     event.preventDefault();
     clearAllMessages();
@@ -288,11 +307,8 @@ function handleRightClickSelection(event: MouseEvent) {
             const end = Math.max(selectionStartIndex, selectionEndIndex);
 
             wordSpans.forEach((span, i) => {
-                if (i >= start && i <= end) {
-                    span.classList.add('bg-blue-200');
-                } else {
-                    span.classList.remove('bg-blue-200');
-                }
+                if (i >= start && i <= end) span.classList.add('bg-blue-200');
+                else span.classList.remove('bg-blue-200');
             });
             
             const selectedWords = originalWords.slice(start, end + 1);
@@ -303,9 +319,6 @@ function handleRightClickSelection(event: MouseEvent) {
         }
     }
 }
-
-// --- AI Formatting Functions ---
-
 async function smartFormatText() {
     clearAllMessages();
     toggleButtons(false);
@@ -340,14 +353,10 @@ async function smartFormatText() {
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: userQuery,
-                config: {
-                    systemInstruction: "You are a professional document formatter. Your goal is to make the provided text clear and readable using Markdown. Identify key sections, lists, and tables and format them accordingly."
-                }
+                config: { systemInstruction: "You are a professional document formatter. Your goal is to make the provided text clear and readable using Markdown. Identify key sections, lists, and tables and format them accordingly." }
             });
-            const formattedText = response.text;
-            if (formattedText) {
-                formattedPagesContent[pageNum] = formattedText;
-            } else {
+            if (response.text) formattedPagesContent[pageNum] = response.text;
+            else {
                 formattedPagesContent[pageNum] = `*AI failed to provide a format for this page. Original text:*\n\n${textToFormat}`;
                 console.warn(`No formatted text returned for page ${pageNum}.`);
             }
@@ -364,16 +373,14 @@ async function smartFormatText() {
     
     if (Object.keys(formattedPagesContent).length > 0) {
         formattedCurrentPage = Math.min(...Object.keys(formattedPagesContent).map(Number));
-        await updateFormattedView(); // It is now async
+        await updateFormattedView();
         const endTime = performance.now();
         const duration = ((endTime - startTime) / 1000).toFixed(2);
         showMessage(processTimeMessageEl, `Smart formatting completed in ${duration} seconds.`, 'success');
-    } else {
-        showMessage(errorMessageEl, 'Smart formatting failed for all pages.', 'error');
-    }
+    } else showMessage(errorMessageEl, 'Smart formatting failed for all pages.', 'error');
+    
     toggleButtons(true);
 }
-
 async function reformatSelectedText() {
     clearAllMessages();
     const selection = window.getSelection();
@@ -398,23 +405,19 @@ async function reformatSelectedText() {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: userQuery,
-            config: {
-                systemInstruction: "You are a professional document formatter. Your goal is to make the provided text clear and readable using Markdown. Only re-format the provided text; do not add extra commentary."
-            }
+            config: { systemInstruction: "You are a professional document formatter. Your goal is to make the provided text clear and readable using Markdown. Only re-format the provided text; do not add extra commentary." }
         });
         const newText = response.text;
         
         if (newText) {
-            // Fix: await marked.parse as it can return a Promise
             const newHtmlText = await marked.parse(newText);
             const range = selection.getRangeAt(0);
             range.deleteContents();
             const fragment = range.createContextualFragment(newHtmlText);
             range.insertNode(fragment);
             showMessage(successMessageEl, 'Selected text re-formatted successfully!', 'success');
-        } else {
-            showMessage(errorMessageEl, 'Failed to re-format. The AI did not return a response.', 'error');
-        }
+        } else showMessage(errorMessageEl, 'Failed to re-format. The AI did not return a response.', 'error');
+        
     } catch (error) {
         console.error('Re-format API call failed:', error);
         showMessage(errorMessageEl, 'An error occurred during re-formatting. Please try again.', 'error');
@@ -423,20 +426,14 @@ async function reformatSelectedText() {
         toggleButtons(true);
     }
 }
-
 async function summarizeContent() {
     clearAllMessages();
-    const allFormattedText = Object.keys(formattedPagesContent)
-        .map(Number)
-        .sort((a, b) => a - b)
-        .map(pageNum => formattedPagesContent[pageNum])
-        .join('\n\n---\n\n');
+    const allFormattedText = Object.values(formattedPagesContent).join('\n\n---\n\n');
 
     if (!allFormattedText.trim()) {
         showMessage(errorMessageEl, 'No formatted text to summarize. Please format the text first.', 'error');
         return;
     }
-
     if (!ai) {
         showMessage(errorMessageEl, 'AI service is not available.', 'error');
         return;
@@ -451,18 +448,15 @@ async function summarizeContent() {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: userQuery,
-            config: {
-                systemInstruction: "You are an expert academic and professional summarizer. Your goal is to create a brief, accurate, and highly readable summary of the provided text."
-            }
+            config: { systemInstruction: "You are an expert academic and professional summarizer. Your goal is to create a brief, accurate, and highly readable summary of the provided text." }
         });
         const summaryText = response.text;
 
         if (summaryText) {
             summaryContentEl.innerHTML = await marked.parse(summaryText);
             summaryModalEl.classList.remove('hidden');
-        } else {
-            showMessage(errorMessageEl, 'The AI could not generate a summary for the provided text.', 'error');
-        }
+        } else showMessage(errorMessageEl, 'The AI could not generate a summary for the provided text.', 'error');
+        
     } catch (error) {
         console.error('Summarization API call failed:', error);
         showMessage(errorMessageEl, 'An error occurred while generating the summary. Please try again.', 'error');
@@ -471,18 +465,11 @@ async function summarizeContent() {
         toggleButtons(true);
     }
 }
-
-// --- Utility and Event Handler Functions ---
-
 async function copyFormattedText() {
     clearAllMessages();
-    // Fix: Use Promise.all with async map, and sort numbers correctly.
-    const formattedHtmlPromises = Object.keys(formattedPagesContent).map(Number).sort((a, b) => a - b).map(async (pageNum) => {
-        return await marked.parse(formattedPagesContent[pageNum]);
-    });
+    const formattedHtmlPromises = Object.keys(formattedPagesContent).map(Number).sort((a, b) => a - b).map(pageNum => marked.parse(formattedPagesContent[pageNum]));
     const allFormattedHtmlArray = await Promise.all(formattedHtmlPromises);
     const allFormattedHtml = allFormattedHtmlArray.join('<hr style="page-break-after: always; border: none;">');
-
 
     if (!allFormattedHtml.trim()) {
         showMessage(errorMessageEl, 'No formatted text to copy.', 'error');
@@ -506,70 +493,46 @@ async function copyFormattedText() {
         showMessage(errorMessageEl, 'Could not copy HTML. Modern browser needed.', 'error');
     }
 }
-
 function findAndHighlight(container: HTMLElement, query: string) {
-    // 1. Clear previous highlights safely
     const highlights = container.querySelectorAll('span.highlight');
     highlights.forEach(span => {
         const parent = span.parentNode;
         if (!parent) return;
-        // Replace the span with its own text content
         parent.replaceChild(document.createTextNode(span.textContent || ''), span);
-        parent.normalize(); // Merge adjacent text nodes for cleaner DOM
+        parent.normalize(); 
     });
 
     if (!query || query.trim() === '') return;
 
-    // 2. Highlight new matches
     const regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
     
     const textNodesToProcess: Node[] = [];
     let node;
     while (node = walker.nextNode()) {
-        // Simple check to avoid processing nodes inside scripts or styles, if any
-        if (node.parentElement?.tagName === 'SCRIPT' || node.parentElement?.tagName === 'STYLE') {
-            continue;
-        }
-        if (node.nodeValue && regex.test(node.nodeValue)) {
-            textNodesToProcess.push(node);
-        }
+        if (node.parentElement?.tagName === 'SCRIPT' || node.parentElement?.tagName === 'STYLE') continue;
+        if (node.nodeValue && regex.test(node.nodeValue)) textNodesToProcess.push(node);
     }
 
     textNodesToProcess.forEach(textNode => {
         if (!textNode.nodeValue || !textNode.parentNode) return;
-
         const fragment = document.createDocumentFragment();
         let lastIndex = 0;
-
         textNode.nodeValue.replace(regex, (match, offset: number) => {
-            // Add the text before the match
             const beforeText = textNode.nodeValue!.substring(lastIndex, offset);
-            if (beforeText) {
-                fragment.appendChild(document.createTextNode(beforeText));
-            }
-
-            // Add the highlighted match
+            if (beforeText) fragment.appendChild(document.createTextNode(beforeText));
             const highlightSpan = document.createElement('span');
             highlightSpan.className = 'highlight';
             highlightSpan.textContent = match;
             fragment.appendChild(highlightSpan);
-
             lastIndex = offset + match.length;
-            return match; // required by replace, but we don't use the returned string
+            return match; 
         });
-        
-        // Add any remaining text after the last match
         const afterText = textNode.nodeValue.substring(lastIndex);
-        if (afterText) {
-            fragment.appendChild(document.createTextNode(afterText));
-        }
-
-        // Replace the original text node with the new fragment
+        if (afterText) fragment.appendChild(document.createTextNode(afterText));
         textNode.parentNode.replaceChild(fragment, textNode);
     });
 }
-
 function downloadFile(content: string | Blob, fileName: string, mimeType?: string) {
     const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
@@ -581,7 +544,6 @@ function downloadFile(content: string | Blob, fileName: string, mimeType?: strin
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
-
 async function resetApp() {
     pdfFileEl.value = '';
     pageNumbersEl.value = '';
@@ -605,20 +567,262 @@ async function resetApp() {
     setTimeout(() => hideMessage(successMessageEl), 2000);
 }
 
+// --- NEW FEATURE FUNCTIONS (v2.0) ---
+async function generateForeword() {
+    clearAllMessages();
+    const allFormattedText = Object.values(formattedPagesContent).join('\n\n');
+    if (!allFormattedText.trim()) {
+        showMessage(errorMessageEl, 'No formatted text available to generate a foreword.', 'error');
+        return;
+    }
+    if (!ai) {
+        showMessage(errorMessageEl, 'AI service is not available.', 'error');
+        return;
+    }
+
+    toggleButtons(false);
+    apiStatusMessageEl.textContent = 'Generating foreword...';
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Based on the following document content, write a compelling and professional foreword for a book. The foreword should be about 250-400 words. It should introduce the main topics, highlight the importance of the work, and engage the reader.\n\nDOCUMENT CONTENT:\n${allFormattedText.substring(0, 15000)}`,
+            config: { systemInstruction: "You are a professional book editor and author, skilled at writing insightful and engaging forewords." }
+        });
+        const forewordText = response.text;
+
+        if (forewordText) {
+            forewordContentEl.innerHTML = await marked.parse(forewordText);
+            forewordModalEl.classList.remove('hidden');
+        } else showMessage(errorMessageEl, 'The AI could not generate a foreword for the provided text.', 'error');
+        
+    } catch (error) {
+        console.error('Foreword API call failed:', error);
+        showMessage(errorMessageEl, 'An error occurred while generating the foreword.', 'error');
+    } finally {
+        apiStatusMessageEl.textContent = '';
+        toggleButtons(true);
+    }
+}
+async function mergePdfs() {
+    const files = pdfMergeInput.files;
+    if (!files || files.length < 2) {
+        showMessage(errorMessageEl, 'Please select at least two PDF files to merge.', 'error');
+        return;
+    }
+    apiStatusMessageEl.textContent = `Merging ${files.length} PDFs...`;
+    toggleButtons(false);
+
+    try {
+        const mergedPdf = await PDFDocument.create();
+        for (const file of files) {
+            const pdfBytes = await file.arrayBuffer();
+            const pdf = await PDFDocument.load(pdfBytes);
+            const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+            copiedPages.forEach((page) => mergedPdf.addPage(page));
+        }
+        const mergedPdfBytes = await mergedPdf.save();
+        downloadFile(new Blob([mergedPdfBytes], { type: 'application/pdf' }), 'merged_document.pdf');
+        showMessage(successMessageEl, 'PDFs merged successfully!', 'success');
+    } catch(err) {
+        console.error("Error merging PDFs:", err);
+        showMessage(errorMessageEl, 'Could not merge PDFs. Please check the files and try again.', 'error');
+    } finally {
+        apiStatusMessageEl.textContent = '';
+        toggleButtons(true);
+        pdfMergeInput.value = '';
+        executeMergeBtn.disabled = true;
+        pdfMergeModalEl.classList.add('hidden');
+    }
+}
+async function generateTitlesAndCaptions() {
+    const allFormattedText = Object.values(formattedPagesContent).join('\n\n');
+    if (!allFormattedText.trim() || !ai) {
+        showMessage(errorMessageEl, 'Please format text first to generate ideas.', 'error');
+        return;
+    }
+    titlesSpinner.classList.remove('hidden');
+    generateTitlesBtn.disabled = true;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Based on the following book content, generate 5 catchy, professional book titles and 3 short, engaging back-cover captions. \n\nCONTENT:\n${allFormattedText.substring(0, 10000)}`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        titles: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        captions: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    }
+                },
+            },
+        });
+        
+        const suggestions = JSON.parse(response.text);
+        titlesOutput.innerHTML = '';
+        const titleHeader = document.createElement('h4');
+        titleHeader.className = 'font-semibold text-gray-700 mt-2';
+        titleHeader.textContent = 'Suggested Titles:';
+        titlesOutput.appendChild(titleHeader);
+        suggestions.titles.forEach((title: string) => {
+            const btn = document.createElement('button');
+            btn.className = 'suggestion-btn';
+            btn.textContent = title;
+            btn.onclick = () => {
+                coverState.title = title;
+                updateCoverCanvas();
+            };
+            titlesOutput.appendChild(btn);
+        });
+
+        const captionHeader = document.createElement('h4');
+        captionHeader.className = 'font-semibold text-gray-700 mt-4';
+        captionHeader.textContent = 'Suggested Captions:';
+        titlesOutput.appendChild(captionHeader);
+        suggestions.captions.forEach((caption: string) => {
+            const p = document.createElement('p');
+            p.className = 'suggestion-btn';
+            p.textContent = `"${caption}"`;
+            titlesOutput.appendChild(p);
+        });
+
+    } catch (err) {
+        console.error("Error generating titles:", err);
+        showMessage(errorMessageEl, 'Could not generate suggestions.', 'error');
+    } finally {
+        titlesSpinner.classList.add('hidden');
+        generateTitlesBtn.disabled = false;
+    }
+}
+async function generateCoverImage() {
+    if (!coverPromptInput.value.trim() || !ai) {
+        showMessage(errorMessageEl, 'Please enter a description for the cover art.', 'error');
+        return;
+    }
+    imageSpinner.classList.remove('hidden');
+    generateImageBtn.disabled = true;
+
+    try {
+        const parts: any[] = [{ text: coverPromptInput.value }];
+        if (coverState.referenceImage) {
+            parts.unshift({
+                inlineData: {
+                    data: coverState.referenceImage.split(',')[1], // remove the data URI prefix
+                    mimeType: coverState.referenceImage.match(/data:(.*);/)?.[1] || 'image/jpeg',
+                }
+            });
+        }
+        const modelToUse = coverState.referenceImage ? 'gemini-2.5-flash-image-preview' : 'imagen-4.0-generate-001';
+        
+        let generatedImageData: string | null = null;
+
+        if (modelToUse === 'imagen-4.0-generate-001') {
+             const response = await ai.models.generateImages({
+                model: 'imagen-4.0-generate-001',
+                prompt: coverPromptInput.value,
+            });
+            generatedImageData = response.generatedImages[0].image.imageBytes;
+        } else { // gemini-2.5-flash-image-preview
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash-image-preview',
+                contents: { parts: parts },
+                config: { responseModalities: [Modality.IMAGE, Modality.TEXT] }
+            });
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData) {
+                    generatedImageData = part.inlineData.data;
+                    break;
+                }
+            }
+        }
+        
+        if (generatedImageData) {
+            coverState.generatedImage = `data:image/png;base64,${generatedImageData}`;
+            updateCoverCanvas();
+            downloadCoverBtn.disabled = false;
+        } else {
+             showMessage(errorMessageEl, 'AI failed to generate an image.', 'error');
+        }
+
+    } catch(err) {
+        console.error("Error generating image:", err);
+        showMessage(errorMessageEl, 'Could not generate image. Please try again.', 'error');
+    } finally {
+        imageSpinner.classList.add('hidden');
+        generateImageBtn.disabled = false;
+    }
+}
+async function updateCoverCanvas() {
+    const ctx = coverCanvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Standard book cover ratio (e.g., 6x9 inches) -> 1200x1800 pixels for high quality
+    coverCanvas.width = 1200;
+    coverCanvas.height = 1800;
+
+    // Clear canvas
+    ctx.fillStyle = '#e5e7eb'; // gray-200
+    ctx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
+    
+    // Draw generated image
+    if (coverState.generatedImage) {
+        const img = new Image();
+        img.src = coverState.generatedImage;
+        await new Promise(resolve => { img.onload = resolve; });
+        ctx.drawImage(img, 0, 0, coverCanvas.width, coverCanvas.height);
+    } else {
+        ctx.fillStyle = 'white';
+        ctx.font = '40px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Image will appear here', coverCanvas.width / 2, coverCanvas.height / 2);
+    }
+
+    // Draw a semi-transparent overlay for text readability
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
+
+    // Draw Title
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 120px serif';
+    ctx.fillText(coverState.title, coverCanvas.width / 2, 300, 1000); // Max width 1000px
+
+    // Draw Author
+    ctx.font = '60px sans-serif';
+    ctx.fillText(coverState.author, coverCanvas.width / 2, 500);
+
+    // Draw Barcode
+    if (coverState.price || coverState.isbn) {
+        const barcodeCanvas = document.createElement('canvas');
+        const barcodeValue = coverState.isbn || coverState.price;
+        JsBarcode(barcodeCanvas, barcodeValue, {
+            format: coverState.isbn ? "EAN13" : "CODE128",
+            background: "#ffffff",
+            width: 4,
+            height: 150,
+            fontSize: 30
+        });
+        ctx.drawImage(barcodeCanvas, (coverCanvas.width - barcodeCanvas.width) / 2, coverCanvas.height - 300);
+    }
+}
+function assembleAndDownloadCover() {
+    updateCoverCanvas().then(() => {
+        const dataUrl = coverCanvas.toDataURL('image/png');
+        downloadFile(dataUrl, 'book_cover.png');
+    });
+}
+
 
 // --- Event Listeners ---
-
-closeGuideBtn.addEventListener('click', () => {
-    guideEl.classList.add('hidden');
-});
-
+// Existing Listeners
+closeGuideBtn.addEventListener('click', () => guideEl.classList.add('hidden'));
 pdfFileEl.addEventListener('change', (event) => {
-    // Fix: cast event.target to HTMLInputElement to access files property.
     const target = event.target as HTMLInputElement;
     if (!target.files) return;
     const file = target.files[0];
     if (!file) return;
-
     clearAllMessages();
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -637,177 +841,94 @@ pdfFileEl.addEventListener('change', (event) => {
     };
     reader.readAsArrayBuffer(file);
 });
-
 extractTextBtn.addEventListener('click', extractTextFromPDF);
 smartFormatBtn.addEventListener('click', smartFormatText);
 clearBtn.addEventListener('click', resetApp);
-// Fix: Pass event to handler to have it typed.
 extractedContentEl.addEventListener('contextmenu', (e) => handleRightClickSelection(e));
 copyFormattedTextBtn.addEventListener('click', copyFormattedText);
 reformatSelectionBtn.addEventListener('click', reformatSelectedText);
 summarizeBtn.addEventListener('click', summarizeContent);
-
-downloadBtn.addEventListener('click', () => {
-    downloadOptions.classList.toggle('hidden');
-});
-
+downloadBtn.addEventListener('click', () => downloadOptions.classList.toggle('hidden'));
 document.addEventListener('click', (e) => {
-    // Fix: Cast e.target to Node for .contains() method.
     if (!downloadBtn.contains(e.target as Node) && !downloadOptions.contains(e.target as Node)) {
         downloadOptions.classList.add('hidden');
     }
 });
-
 downloadMdBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    // Fix: Correctly sort numeric keys from object.
-    const allFormattedMd = Object.keys(formattedPagesContent).map(Number).sort((a, b) => a - b).map(pageNum => {
-        return `## Page ${pageNum}\n\n${formattedPagesContent[pageNum]}`;
-    }).join('\n\n---\n\n');
-    if(allFormattedMd.trim()) {
-        downloadFile(allFormattedMd, 'formatted_text.md', 'text/markdown;charset=utf-8');
-    } else {
-        showMessage(errorMessageEl, 'No formatted text to download.', 'error');
-    }
+    const allFormattedMd = Object.keys(formattedPagesContent).map(Number).sort((a, b) => a - b).map(pageNum => `## Page ${pageNum}\n\n${formattedPagesContent[pageNum]}`).join('\n\n---\n\n');
+    if(allFormattedMd.trim()) downloadFile(allFormattedMd, 'formatted_text.md', 'text/markdown;charset=utf-8');
+    else showMessage(errorMessageEl, 'No formatted text to download.', 'error');
     downloadOptions.classList.add('hidden');
 });
-
-// Fix: Make listener async to handle async marked.parse()
 downloadHtmlBtn.addEventListener('click', async (e) => {
     e.preventDefault();
-    // Fix: Use Promise.all with async map, and sort numbers correctly.
-    const formattedHtmlPromises = Object.keys(formattedPagesContent).map(Number).sort((a,b)=>a-b).map(async (pageNum) => {
-        return `<h2>Page ${pageNum}</h2>\n${await marked.parse(formattedPagesContent[pageNum])}`;
-    });
+    // FIX: Use async/await to handle both sync and async return values from marked.parse, preventing a runtime error when calling .then on a string.
+    const formattedHtmlPromises = Object.keys(formattedPagesContent).map(Number).sort((a,b)=>a-b).map(async pageNum => `<h2>Page ${pageNum}</h2>\n${await marked.parse(formattedPagesContent[pageNum])}`);
     const allFormattedHtmlArray = await Promise.all(formattedHtmlPromises);
     const allFormattedHtml = allFormattedHtmlArray.join('<hr style="page-break-after: always; border-top: 1px solid #ccc;">');
-
     if(allFormattedHtml.trim()) {
         const finalHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Formatted PDF Content</title><style>body{font-family: sans-serif; line-height: 1.6;} table{border-collapse: collapse; width: 100%;} th, td{border: 1px solid #ddd; padding: 8px;} th{background-color: #f2f2f2;}</style></head><body>${allFormattedHtml}</body></html>`;
         downloadFile(finalHtml, 'formatted_text.html', 'text/html;charset=utf-8');
-    } else {
-        showMessage(errorMessageEl, 'No formatted text to download.', 'error');
-    }
+    } else showMessage(errorMessageEl, 'No formatted text to download.', 'error');
     downloadOptions.classList.add('hidden');
 });
-
 downloadDocxBtn.addEventListener('click', async (e) => {
     e.preventDefault();
-    
     downloadInfoModalEl.classList.remove('hidden');
-
-    const formattedHtmlPromises = Object.keys(formattedPagesContent).map(Number).sort((a, b) => a - b).map(async (pageNum) => {
-        const pageHtml = await marked.parse(formattedPagesContent[pageNum]);
-        return `<h2>Page ${pageNum}</h2>\n${pageHtml}`;
-    });
+    const formattedHtmlPromises = Object.keys(formattedPagesContent).map(Number).sort((a, b) => a - b).map(async (pageNum) => `<h2>Page ${pageNum}</h2>\n${await marked.parse(formattedPagesContent[pageNum])}`);
     const allFormattedHtmlArray = await Promise.all(formattedHtmlPromises);
     const combinedHtml = allFormattedHtmlArray.join('<hr style="page-break-after: always; visibility: hidden;" />');
-
     if (combinedHtml.trim()) {
         try {
-            // FIX: Add a style block to ensure table borders are visible in the docx file.
-            const docStyles = `
-                <style>
-                    table { border-collapse: collapse; width: 100%; }
-                    th, td { border: 1px solid black; padding: 8px; }
-                </style>
-            `;
-            // FIX: To solve character encoding issues, wrap the content in a full HTML document with a UTF-8 meta tag and styles.
+            const docStyles = `<style>table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid black; padding: 8px; }</style>`;
             const fullHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Formatted Document</title>${docStyles}</head><body>${combinedHtml}</body></html>`;
-            // FIX: Cast result to Blob as asBlob returns Blob in browser but has a broader type.
             const fileBlob = await asBlob(fullHtml) as Blob;
             downloadFile(fileBlob, 'formatted_document.docx');
         } catch(err) {
             console.error("Error creating docx file:", err);
             showMessage(errorMessageEl, 'Could not create .docx file.', 'error');
         }
-    } else {
-        showMessage(errorMessageEl, 'No formatted text to download.', 'error');
-    }
+    } else showMessage(errorMessageEl, 'No formatted text to download.', 'error');
     downloadOptions.classList.add('hidden');
 });
-
-
 const pageNavListener = async (isNext: boolean, isExtracted: boolean) => {
     const content = isExtracted ? extractedPagesContent : formattedPagesContent;
     let currentPage = isExtracted ? extractedCurrentPage : formattedCurrentPage;
     const updateView = isExtracted ? updateExtractedView : updateFormattedView;
-
     const pageNums = Object.keys(content).map(Number).sort((a, b) => a - b);
     const currentIndex = pageNums.indexOf(currentPage);
-
     let newIndex = currentIndex;
-    if (isNext && currentIndex < pageNums.length - 1) {
-        newIndex++;
-    } else if (!isNext && currentIndex > 0) {
-        newIndex--;
-    }
-    
+    if (isNext && currentIndex < pageNums.length - 1) newIndex++;
+    else if (!isNext && currentIndex > 0) newIndex--;
     if (newIndex !== currentIndex) {
-        if (isExtracted) {
-            extractedCurrentPage = pageNums[newIndex];
-        } else {
-            formattedCurrentPage = pageNums[newIndex];
-        }
+        if (isExtracted) extractedCurrentPage = pageNums[newIndex];
+        else formattedCurrentPage = pageNums[newIndex];
         await updateView();
     }
 };
-
 prevExtractedPageBtn.addEventListener('click', () => pageNavListener(false, true));
 nextExtractedPageBtn.addEventListener('click', () => pageNavListener(true, true));
 prevFormattedPageBtn.addEventListener('click', () => pageNavListener(false, false));
 nextFormattedPageBtn.addEventListener('click', () => pageNavListener(true, false));
-        
 findBtnExtracted.addEventListener('click', () => findAndHighlight(extractedContentEl, findInputExtracted.value));
-findInputExtracted.addEventListener('keydown', (e) => {
-    if(e.key === 'Enter') {
-        e.preventDefault();
-        findAndHighlight(extractedContentEl, findInputExtracted.value)
-    }
-});
+findInputExtracted.addEventListener('keydown', (e) => { if(e.key === 'Enter') { e.preventDefault(); findAndHighlight(extractedContentEl, findInputExtracted.value) }});
 findBtnFormatted.addEventListener('click', () => findAndHighlight(formattedContentEl, findInputFormatted.value));
-findInputFormatted.addEventListener('keydown', (e) => {
-    if(e.key === 'Enter') {
-        e.preventDefault();
-        findAndHighlight(formattedContentEl, findInputFormatted.value)
-    }
-});
-
-// Summary Modal Listeners
-closeSummaryModalBtn.addEventListener('click', () => {
-    summaryModalEl.classList.add('hidden');
-});
-
+findInputFormatted.addEventListener('keydown', (e) => { if(e.key === 'Enter') { e.preventDefault(); findAndHighlight(formattedContentEl, findInputFormatted.value) }});
+closeSummaryModalBtn.addEventListener('click', () => summaryModalEl.classList.add('hidden'));
 copySummaryBtn.addEventListener('click', async () => {
     const summaryText = summaryContentEl.innerText;
     if (summaryText) {
         try {
             await navigator.clipboard.writeText(summaryText);
-            const originalText = copySummaryBtn.textContent;
             copySummaryBtn.textContent = 'Copied!';
-            setTimeout(() => {
-                copySummaryBtn.textContent = originalText;
-            }, 2000);
-        } catch (err) {
-            console.error('Failed to copy summary:', err);
-            alert('Failed to copy summary text.');
-        }
+            setTimeout(() => { copySummaryBtn.textContent = 'Copy Summary'; }, 2000);
+        } catch (err) { alert('Failed to copy summary text.'); }
     }
 });
-
-// Download Info Modal Listener
-closeDownloadInfoModalBtn.addEventListener('click', () => {
-    downloadInfoModalEl.classList.add('hidden');
-});
-
-
-// --- Follow Gate Modal Logic ---
+closeDownloadInfoModalBtn.addEventListener('click', () => downloadInfoModalEl.classList.add('hidden'));
 if (followGateModalEl && followCheckboxEl && continueToAppBtn) {
-    const hasSeenFollowGate = localStorage.getItem('hasSeenFollowGate');
-    if (!hasSeenFollowGate) {
-        followGateModalEl.classList.remove('hidden');
-    }
-
+    if (!localStorage.getItem('hasSeenFollowGate')) followGateModalEl.classList.remove('hidden');
     followCheckboxEl.addEventListener('change', () => {
         continueToAppBtn.disabled = !followCheckboxEl.checked;
         if (followCheckboxEl.checked) {
@@ -820,7 +941,6 @@ if (followGateModalEl && followCheckboxEl && continueToAppBtn) {
             continueToAppBtn.classList.remove('hover:bg-blue-700');
         }
     });
-
     continueToAppBtn.addEventListener('click', () => {
         if (!continueToAppBtn.disabled) {
             followGateModalEl.classList.add('hidden');
@@ -829,8 +949,62 @@ if (followGateModalEl && followCheckboxEl && continueToAppBtn) {
     });
 }
 
+// --- New Feature Listeners (v2.0) ---
+generateForewordBtn.addEventListener('click', generateForeword);
+mergePdfsBtn.addEventListener('click', () => {
+    clearAllMessages();
+    pdfMergeModalEl.classList.remove('hidden');
+});
+bookCoverBtn.addEventListener('click', () => {
+    clearAllMessages();
+    updateCoverCanvas(); // Initialize canvas
+    bookCoverModalEl.classList.remove('hidden');
+});
+closeWhatsNewModalBtn.addEventListener('click', () => whatsNewModalEl.classList.add('hidden'));
+gotItWhatsNewBtn.addEventListener('click', () => whatsNewModalEl.classList.add('hidden'));
+closeForewordModalBtn.addEventListener('click', () => forewordModalEl.classList.add('hidden'));
+copyForewordBtn.addEventListener('click', async () => {
+    const forewordText = forewordContentEl.innerText;
+    if(forewordText) {
+        await navigator.clipboard.writeText(forewordText);
+        copyForewordBtn.textContent = 'Copied!';
+        setTimeout(() => { copyForewordBtn.textContent = 'Copy Foreword' }, 2000);
+    }
+});
+closePdfMergeModalBtn.addEventListener('click', () => pdfMergeModalEl.classList.add('hidden'));
+pdfMergeInput.addEventListener('change', () => {
+    executeMergeBtn.disabled = !pdfMergeInput.files || pdfMergeInput.files.length < 2;
+});
+executeMergeBtn.addEventListener('click', mergePdfs);
+closeBookCoverModalBtn.addEventListener('click', () => bookCoverModalEl.classList.add('hidden'));
+generateTitlesBtn.addEventListener('click', generateTitlesAndCaptions);
+generateImageBtn.addEventListener('click', generateCoverImage);
+coverReferenceImage.addEventListener('change', async (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (file) coverState.referenceImage = await fileToBase64(file);
+    else coverState.referenceImage = null;
+});
+coverAuthorInput.addEventListener('input', (e) => {
+    coverState.author = (e.target as HTMLInputElement).value;
+    updateCoverCanvas();
+});
+coverPriceInput.addEventListener('input', (e) => {
+    coverState.price = (e.target as HTMLInputElement).value;
+    updateCoverCanvas();
+});
+coverIsbnInput.addEventListener('input', (e) => {
+    coverState.isbn = (e.target as HTMLInputElement).value;
+    updateCoverCanvas();
+});
+downloadCoverBtn.addEventListener('click', assembleAndDownloadCover);
 
-// Initial Setup
+// --- Initial Setup ---
 (async () => {
     await updateFormattedView();
+    // What's New logic
+    const lastSeenVersion = localStorage.getItem('lastSeenVersion');
+    if(lastSeenVersion !== APP_VERSION) {
+        whatsNewModalEl.classList.remove('hidden');
+        localStorage.setItem('lastSeenVersion', APP_VERSION);
+    }
 })();

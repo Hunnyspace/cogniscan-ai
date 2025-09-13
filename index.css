@@ -30,6 +30,27 @@ button:disabled {
     transition: background-color 0.2s;
 }
 
+/* Reusable classes for new features */
+.gradient-btn {
+    @apply bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-lg px-5 py-2.5 font-semibold hover:shadow-lg transition duration-300 transform active:scale-95 shadow-md;
+}
+
+.form-input {
+    @apply w-full text-gray-700 bg-white border border-gray-300 rounded-lg p-2.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+.form-input-file {
+     @apply w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100;
+}
+
+.suggestion-btn {
+    @apply text-left w-full p-2 bg-gray-100 hover:bg-blue-100 rounded-md text-sm text-gray-800 border border-gray-200 cursor-pointer;
+}
+
+.spinner {
+    @apply border-4 border-gray-300 border-t-blue-500 rounded-full w-8 h-8 animate-spin mx-auto;
+}
+
+
 /* Styles for the AI Formatted Content to make it look clean and professional */
 #formattedContent h1,
 #formattedContent h2,
@@ -96,15 +117,15 @@ button:disabled {
 }
 
 /* Modal Styles */
-#summaryModal, #downloadInfoModal, #followGateModal {
+#summaryModal, #downloadInfoModal, #followGateModal, #whatsNewModal, #forewordModal, #pdfMergeModal, #bookCoverModal {
     transition: opacity 0.3s ease;
 }
 
-#summaryModal > div, #downloadInfoModal > div, #followGateModal > div {
+#summaryModal > div, #downloadInfoModal > div, #followGateModal > div, #whatsNewModal > div, #forewordModal > div, #pdfMergeModal > div, #bookCoverModal > div {
     transition: transform 0.3s ease;
     transform: scale(0.95);
 }
 
-#summaryModal:not(.hidden) > div, #downloadInfoModal:not(.hidden) > div, #followGateModal:not(.hidden) > div {
+#summaryModal:not(.hidden) > div, #downloadInfoModal:not(.hidden) > div, #followGateModal:not(.hidden) > div, #whatsNewModal:not(.hidden) > div, #forewordModal:not(.hidden) > div, #pdfMergeModal:not(.hidden) > div, #bookCoverModal:not(.hidden) > div {
     transform: scale(1);
 }
