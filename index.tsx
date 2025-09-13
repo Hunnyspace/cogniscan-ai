@@ -153,6 +153,17 @@ const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reje
     reader.onerror = reject;
 });
 
+// Generic AI error handler
+function handleAiError(error: any, element: HTMLElement) {
+    console.error("AI Error:", error);
+    const errorMessage = error.toString();
+    if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
+        showMessage(element, 'API Rate Limit Reached: You have exceeded the free usage quota. Please try again later.', 'error');
+    } else {
+        showMessage(element, 'An error occurred with the AI service. Please try again.', 'error');
+    }
+}
+
 // --- Core PDF and Text Functions (Existing) ---
 function parsePageNumbers(input: string): number[] {
     const ranges = input.split(',').map(s => s.trim()).filter(Boolean);
@@ -270,7 +281,7 @@ async function extractTextFromPDF() {
             }
         }
         
-        if (Object.keys(extractedPagesContent).length === 0 || totalExtractedText.length === 0) {
+        if (Object.keys(extractedPagesContent).length === 0 || totalExtractedText.trim().length === 0) {
             extractedContentEl.innerHTML = '<p class="text-gray-500">No text could be found on the specified pages. This can happen if the PDF contains only images or scanned documents without a text layer.</p>';
             showMessage(errorMessageEl, 'Could not find any text on the specified pages.', 'error');
         } else {
@@ -366,9 +377,8 @@ async function smartFormatText() {
                 console.warn(`No formatted text returned for page ${pageNum}.`);
             }
         } catch (error) {
-            console.error(`API call failed for page ${pageNum}:`, error);
+            handleAiError(error, errorMessageEl);
             formattedPagesContent[pageNum] = `*Error formatting this page. Original text:*\n\n${textToFormat}`;
-            showMessage(errorMessageEl, `An error occurred while formatting page ${pageNum}.`, 'error');
         }
         progressBarEl.style.width = `${((index + 1) / pagesToFormat.length) * 100}%`;
     }
@@ -424,8 +434,7 @@ async function reformatSelectedText() {
         } else showMessage(errorMessageEl, 'Failed to re-format. The AI did not return a response.', 'error');
         
     } catch (error) {
-        console.error('Re-format API call failed:', error);
-        showMessage(errorMessageEl, 'An error occurred during re-formatting. Please try again.', 'error');
+        handleAiError(error, errorMessageEl);
     } finally {
         apiStatusMessageEl.textContent = '';
         toggleButtons(true);
@@ -463,8 +472,7 @@ async function summarizeContent() {
         } else showMessage(errorMessageEl, 'The AI could not generate a summary for the provided text.', 'error');
         
     } catch (error) {
-        console.error('Summarization API call failed:', error);
-        showMessage(errorMessageEl, 'An error occurred while generating the summary. Please try again.', 'error');
+        handleAiError(error, errorMessageEl);
     } finally {
         apiStatusMessageEl.textContent = '';
         toggleButtons(true);
@@ -602,8 +610,7 @@ async function generateForeword() {
         } else showMessage(errorMessageEl, 'The AI could not generate a foreword for the provided text.', 'error');
         
     } catch (error) {
-        console.error('Foreword API call failed:', error);
-        showMessage(errorMessageEl, 'An error occurred while generating the foreword.', 'error');
+        handleAiError(error, errorMessageEl);
     } finally {
         apiStatusMessageEl.textContent = '';
         toggleButtons(true);
@@ -694,8 +701,7 @@ async function generateTitlesAndCaptions() {
         });
 
     } catch (err) {
-        console.error("Error generating titles:", err);
-        showMessage(errorMessageEl, 'Could not generate suggestions.', 'error');
+        handleAiError(err, errorMessageEl);
     } finally {
         titlesSpinner.classList.add('hidden');
         generateTitlesBtn.disabled = false;
@@ -752,8 +758,7 @@ async function generateCoverImage() {
         }
 
     } catch(err) {
-        console.error("Error generating image:", err);
-        showMessage(errorMessageEl, 'Could not generate image. Please try again.', 'error');
+        handleAiError(err, errorMessageEl);
     } finally {
         imageSpinner.classList.add('hidden');
         generateImageBtn.disabled = false;
