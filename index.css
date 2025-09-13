@@ -42,12 +42,13 @@ button:disabled {
      @apply w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100;
 }
 
-.suggestion-btn {
-    @apply text-left w-full p-2 bg-gray-100 hover:bg-blue-100 rounded-md text-sm text-gray-800 border border-gray-200 cursor-pointer;
-}
-
 .spinner {
     @apply border-4 border-gray-300 border-t-blue-500 rounded-full w-8 h-8 animate-spin mx-auto;
+}
+
+/* New styles for Book Assembler */
+.barcode-label {
+    @apply px-5 py-2 border border-gray-200 bg-white text-gray-500 cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200;
 }
 
 

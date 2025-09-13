@@ -1,7 +1,7 @@
 import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { marked } from "marked";
 import { asBlob } from 'html-docx-js-typescript';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import './index.css';
 
 // Declare third-party libraries loaded via script tags
@@ -55,7 +55,7 @@ const followGateModalEl = document.getElementById('followGateModal') as HTMLDivE
 const followCheckboxEl = document.getElementById('followCheckbox') as HTMLInputElement;
 const continueToAppBtn = document.getElementById('continueToAppBtn') as HTMLButtonElement;
 
-// --- New Feature Elements (v2.0) ---
+// --- New Feature Elements (v2.1) ---
 const bookCoverBtn = document.getElementById('bookCoverBtn') as HTMLButtonElement;
 const generateForewordBtn = document.getElementById('generateForewordBtn') as HTMLButtonElement;
 const mergePdfsBtn = document.getElementById('mergePdfsBtn') as HTMLButtonElement;
@@ -77,26 +77,23 @@ const closePdfMergeModalBtn = document.getElementById('closePdfMergeModalBtn') a
 const pdfMergeInput = document.getElementById('pdfMergeInput') as HTMLInputElement;
 const executeMergeBtn = document.getElementById('executeMergeBtn') as HTMLButtonElement;
 
-// Book Cover Studio Modal
+// Book Assembler Modal
 const bookCoverModalEl = document.getElementById('bookCoverModal') as HTMLDivElement;
 const closeBookCoverModalBtn = document.getElementById('closeBookCoverModalBtn') as HTMLButtonElement;
+const coverFrontImageInput = document.getElementById('coverFrontImage') as HTMLInputElement;
+const coverBackImageInput = document.getElementById('coverBackImage') as HTMLInputElement;
+const coverContentPdfInput = document.getElementById('coverContentPdf') as HTMLInputElement;
 const coverAuthorInput = document.getElementById('coverAuthorInput') as HTMLInputElement;
 const coverPriceInput = document.getElementById('coverPriceInput') as HTMLInputElement;
 const coverIsbnInput = document.getElementById('coverIsbnInput') as HTMLInputElement;
-const generateTitlesBtn = document.getElementById('generateTitlesBtn') as HTMLButtonElement;
-const titlesSpinner = document.getElementById('titlesSpinner') as HTMLDivElement;
-const titlesOutput = document.getElementById('titlesOutput') as HTMLDivElement;
-const coverReferenceImage = document.getElementById('coverReferenceImage') as HTMLInputElement;
-const coverPromptInput = document.getElementById('coverPromptInput') as HTMLTextAreaElement;
-const generateImageBtn = document.getElementById('generateImageBtn') as HTMLButtonElement;
-const imageSpinner = document.getElementById('imageSpinner') as HTMLDivElement;
+const barcodePlacementEl = document.getElementById('barcodePlacement') as HTMLDivElement;
 const coverCanvas = document.getElementById('coverCanvas') as HTMLCanvasElement;
 const downloadCoverBtn = document.getElementById('downloadCoverBtn') as HTMLButtonElement;
 
 const actionButtons = [extractTextBtn, smartFormatBtn, clearBtn, reformatSelectionBtn, copyFormattedTextBtn, downloadBtn, summarizeBtn, bookCoverBtn, generateForewordBtn, mergePdfsBtn];
 
 // --- App State ---
-const APP_VERSION = '2.0';
+const APP_VERSION = '2.1';
 let pdfDocument: any = null;
 let originalWords: string[] = [];
 let wordSpans: HTMLSpanElement[] = []; 
@@ -106,14 +103,14 @@ let extractedPagesContent: Record<number, string> = {};
 let formattedPagesContent: Record<number, string> = {};
 let extractedCurrentPage: number = 1;
 let formattedCurrentPage: number = 1;
-// Book Cover State
+// Book Assembler State
 let coverState = {
-    title: 'Your Book Title',
-    author: '',
+    frontCoverFile: null as File | null,
+    backCoverFile: null as File | null,
+    contentPdfFile: null as File | null,
     price: '',
     isbn: '',
-    referenceImage: null as string | null, // Base64
-    generatedImage: null as string | null, // Base64
+    barcodePlacement: 'center' as 'left' | 'center' | 'right',
 };
 
 // Initialize Google GenAI
@@ -146,7 +143,7 @@ function clearAllMessages() {
 function toggleButtons(enable: boolean) {
     actionButtons.forEach(btn => btn.disabled = !enable);
 }
-const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+const fileToUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result as string);
@@ -580,7 +577,7 @@ async function resetApp() {
     setTimeout(() => hideMessage(successMessageEl), 2000);
 }
 
-// --- NEW FEATURE FUNCTIONS (v2.0) ---
+// --- NEW FEATURE FUNCTIONS (v2.1) ---
 async function generateForeword() {
     clearAllMessages();
     const allFormattedText = Object.values(formattedPagesContent).join('\n\n');
@@ -647,181 +644,128 @@ async function mergePdfs() {
         pdfMergeModalEl.classList.add('hidden');
     }
 }
-async function generateTitlesAndCaptions() {
-    const allFormattedText = Object.values(formattedPagesContent).join('\n\n');
-    if (!allFormattedText.trim() || !ai) {
-        showMessage(errorMessageEl, 'Please format text first to generate ideas.', 'error');
-        return;
-    }
-    titlesSpinner.classList.remove('hidden');
-    generateTitlesBtn.disabled = true;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: `Based on the following book content, generate 5 catchy, professional book titles and 3 short, engaging back-cover captions. \n\nCONTENT:\n${allFormattedText.substring(0, 10000)}`,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        titles: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        captions: { type: Type.ARRAY, items: { type: Type.STRING } }
-                    }
-                },
-            },
-        });
-        
-        const suggestions = JSON.parse(response.text);
-        titlesOutput.innerHTML = '';
-        const titleHeader = document.createElement('h4');
-        titleHeader.className = 'font-semibold text-gray-700 mt-2';
-        titleHeader.textContent = 'Suggested Titles:';
-        titlesOutput.appendChild(titleHeader);
-        suggestions.titles.forEach((title: string) => {
-            const btn = document.createElement('button');
-            btn.className = 'suggestion-btn';
-            btn.textContent = title;
-            btn.onclick = () => {
-                coverState.title = title;
-                updateCoverCanvas();
-            };
-            titlesOutput.appendChild(btn);
-        });
-
-        const captionHeader = document.createElement('h4');
-        captionHeader.className = 'font-semibold text-gray-700 mt-4';
-        captionHeader.textContent = 'Suggested Captions:';
-        titlesOutput.appendChild(captionHeader);
-        suggestions.captions.forEach((caption: string) => {
-            const p = document.createElement('p');
-            p.className = 'suggestion-btn';
-            p.textContent = `"${caption}"`;
-            titlesOutput.appendChild(p);
-        });
-
-    } catch (err) {
-        handleAiError(err, errorMessageEl);
-    } finally {
-        titlesSpinner.classList.add('hidden');
-        generateTitlesBtn.disabled = false;
-    }
-}
-async function generateCoverImage() {
-    if (!coverPromptInput.value.trim() || !ai) {
-        showMessage(errorMessageEl, 'Please enter a description for the cover art.', 'error');
-        return;
-    }
-    imageSpinner.classList.remove('hidden');
-    generateImageBtn.disabled = true;
-
-    try {
-        const parts: any[] = [{ text: coverPromptInput.value }];
-        if (coverState.referenceImage) {
-            parts.unshift({
-                inlineData: {
-                    data: coverState.referenceImage.split(',')[1], // remove the data URI prefix
-                    mimeType: coverState.referenceImage.match(/data:(.*);/)?.[1] || 'image/jpeg',
-                }
-            });
-        }
-        const modelToUse = coverState.referenceImage ? 'gemini-2.5-flash-image-preview' : 'imagen-4.0-generate-001';
-        
-        let generatedImageData: string | null = null;
-
-        if (modelToUse === 'imagen-4.0-generate-001') {
-             const response = await ai.models.generateImages({
-                model: 'imagen-4.0-generate-001',
-                prompt: coverPromptInput.value,
-            });
-            generatedImageData = response.generatedImages[0].image.imageBytes;
-        } else { // gemini-2.5-flash-image-preview
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image-preview',
-                contents: { parts: parts },
-                config: { responseModalities: [Modality.IMAGE, Modality.TEXT] }
-            });
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    generatedImageData = part.inlineData.data;
-                    break;
-                }
-            }
-        }
-        
-        if (generatedImageData) {
-            coverState.generatedImage = `data:image/png;base64,${generatedImageData}`;
-            updateCoverCanvas();
-            downloadCoverBtn.disabled = false;
-        } else {
-             showMessage(errorMessageEl, 'AI failed to generate an image.', 'error');
-        }
-
-    } catch(err) {
-        handleAiError(err, errorMessageEl);
-    } finally {
-        imageSpinner.classList.add('hidden');
-        generateImageBtn.disabled = false;
-    }
-}
-async function updateCoverCanvas() {
+async function updateBackCoverCanvas() {
     const ctx = coverCanvas.getContext('2d');
     if (!ctx) return;
     
     // Standard book cover ratio (e.g., 6x9 inches) -> 1200x1800 pixels for high quality
-    coverCanvas.width = 1200;
-    coverCanvas.height = 1800;
+    const canvasWidth = 1200;
+    const canvasHeight = 1800;
+    coverCanvas.width = canvasWidth;
+    coverCanvas.height = canvasHeight;
 
     // Clear canvas
     ctx.fillStyle = '#e5e7eb'; // gray-200
-    ctx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
     
-    // Draw generated image
-    if (coverState.generatedImage) {
-        const img = new Image();
-        img.src = coverState.generatedImage;
-        await new Promise(resolve => { img.onload = resolve; });
-        ctx.drawImage(img, 0, 0, coverCanvas.width, coverCanvas.height);
+    // Draw back cover image if it exists
+    if (coverState.backCoverFile) {
+        try {
+            const imgUrl = await fileToUrl(coverState.backCoverFile);
+            const img = new Image();
+            img.src = imgUrl;
+            await new Promise(resolve => { img.onload = resolve; });
+            ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+        } catch (err) {
+            console.error("Error loading back cover image:", err);
+            ctx.fillStyle = '#fca5a5'; // red-300
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+            ctx.fillStyle = 'black';
+            ctx.font = '40px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Error loading image', canvasWidth / 2, canvasHeight / 2);
+        }
     } else {
         ctx.fillStyle = 'white';
         ctx.font = '40px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Image will appear here', coverCanvas.width / 2, coverCanvas.height / 2);
+        ctx.fillText('Back Cover Preview', canvasWidth / 2, canvasHeight / 2 - 20);
+        ctx.font = '30px sans-serif';
+        ctx.fillText('Upload a back cover image', canvasWidth / 2, canvasHeight / 2 + 30);
     }
-
-    // Draw a semi-transparent overlay for text readability
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx.fillRect(0, 0, coverCanvas.width, coverCanvas.height);
-
-    // Draw Title
-    ctx.fillStyle = 'white';
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 120px serif';
-    ctx.fillText(coverState.title, coverCanvas.width / 2, 300, 1000); // Max width 1000px
-
-    // Draw Author
-    ctx.font = '60px sans-serif';
-    ctx.fillText(coverState.author, coverCanvas.width / 2, 500);
 
     // Draw Barcode
     if (coverState.price || coverState.isbn) {
         const barcodeCanvas = document.createElement('canvas');
         const barcodeValue = coverState.isbn || coverState.price;
-        JsBarcode(barcodeCanvas, barcodeValue, {
-            format: coverState.isbn ? "EAN13" : "CODE128",
-            background: "#ffffff",
-            width: 4,
-            height: 150,
-            fontSize: 30
-        });
-        ctx.drawImage(barcodeCanvas, (coverCanvas.width - barcodeCanvas.width) / 2, coverCanvas.height - 300);
+        try {
+            JsBarcode(barcodeCanvas, barcodeValue, {
+                format: coverState.isbn ? "EAN13" : "CODE128",
+                background: "#ffffff",
+                width: 3,
+                height: 120,
+                fontSize: 24,
+                margin: 10
+            });
+            
+            const barcodeWidth = barcodeCanvas.width;
+            const barcodeHeight = barcodeCanvas.height;
+            const margin = 50; // Margin from the bottom
+            let xPos;
+
+            if (coverState.barcodePlacement === 'left') {
+                xPos = margin;
+            } else if (coverState.barcodePlacement === 'right') {
+                xPos = canvasWidth - barcodeWidth - margin;
+            } else { // center
+                xPos = (canvasWidth - barcodeWidth) / 2;
+            }
+            const yPos = canvasHeight - barcodeHeight - margin;
+            
+            ctx.drawImage(barcodeCanvas, xPos, yPos);
+
+        } catch(e) {
+            console.error("Barcode generation failed:", e);
+        }
     }
 }
-function assembleAndDownloadCover() {
-    updateCoverCanvas().then(() => {
-        const dataUrl = coverCanvas.toDataURL('image/png');
-        downloadFile(dataUrl, 'book_cover.png');
-    });
+async function assembleAndDownloadPdfBook() {
+    const { frontCoverFile, backCoverFile, contentPdfFile } = coverState;
+    if (!frontCoverFile || !backCoverFile || !contentPdfFile) {
+        showMessage(errorMessageEl, 'Please upload all three required files: front cover, back cover, and content PDF.', 'error');
+        return;
+    }
+    clearAllMessages();
+    apiStatusMessageEl.textContent = 'Assembling your book... this may take a moment.';
+    toggleButtons(false);
+
+    try {
+        const mergedPdf = await PDFDocument.create();
+
+        // 1. Embed Front Cover
+        const frontCoverBytes = await frontCoverFile.arrayBuffer();
+        const frontCoverImage = await mergedPdf.embedPng(frontCoverBytes); // Assuming PNG, could also handle JPG
+        const { width: frontW, height: frontH } = frontCoverImage.scale(1);
+        const frontPage = mergedPdf.addPage([frontW, frontH]);
+        frontPage.drawImage(frontCoverImage, { x: 0, y: 0, width: frontW, height: frontH });
+
+        // 2. Append Content PDF
+        const contentPdfBytes = await contentPdfFile.arrayBuffer();
+        const contentPdf = await PDFDocument.load(contentPdfBytes);
+        const copiedPages = await mergedPdf.copyPages(contentPdf, contentPdf.getPageIndices());
+        copiedPages.forEach(page => mergedPdf.addPage(page));
+
+        // 3. Embed Back Cover (with barcode)
+        await updateBackCoverCanvas(); // Ensure canvas is up-to-date
+        const backCoverDataUrl = coverCanvas.toDataURL('image/png');
+        const backCoverBytes = await fetch(backCoverDataUrl).then(res => res.arrayBuffer());
+        const backCoverImage = await mergedPdf.embedPng(backCoverBytes);
+        const { width: backW, height: backH } = backCoverImage.scale(1);
+        const backPage = mergedPdf.addPage([backW, backH]);
+        backPage.drawImage(backCoverImage, { x: 0, y: 0, width: backW, height: backH });
+
+        // 4. Save and Download
+        const mergedPdfBytes = await mergedPdf.save();
+        downloadFile(new Blob([mergedPdfBytes], { type: 'application/pdf' }), 'assembled_book.pdf');
+        showMessage(successMessageEl, 'Your book has been assembled successfully!', 'success');
+
+    } catch(err) {
+        console.error("Error assembling book:", err);
+        showMessage(errorMessageEl, 'Could not assemble the book. Please check your files (e.g., ensure covers are PNG/JPG).', 'error');
+    } finally {
+        apiStatusMessageEl.textContent = '';
+        toggleButtons(true);
+    }
 }
 
 
@@ -959,7 +903,7 @@ if (followGateModalEl && followCheckboxEl && continueToAppBtn) {
     });
 }
 
-// --- New Feature Listeners (v2.0) ---
+// --- New Feature Listeners (v2.1) ---
 generateForewordBtn.addEventListener('click', generateForeword);
 mergePdfsBtn.addEventListener('click', () => {
     clearAllMessages();
@@ -967,7 +911,7 @@ mergePdfsBtn.addEventListener('click', () => {
 });
 bookCoverBtn.addEventListener('click', () => {
     clearAllMessages();
-    updateCoverCanvas(); // Initialize canvas
+    updateBackCoverCanvas(); // Initialize canvas
     bookCoverModalEl.classList.remove('hidden');
 });
 closeWhatsNewModalBtn.addEventListener('click', () => whatsNewModalEl.classList.add('hidden'));
@@ -987,26 +931,35 @@ pdfMergeInput.addEventListener('change', () => {
 });
 executeMergeBtn.addEventListener('click', mergePdfs);
 closeBookCoverModalBtn.addEventListener('click', () => bookCoverModalEl.classList.add('hidden'));
-generateTitlesBtn.addEventListener('click', generateTitlesAndCaptions);
-generateImageBtn.addEventListener('click', generateCoverImage);
-coverReferenceImage.addEventListener('change', async (e) => {
-    const file = (e.target as HTMLInputElement).files?.[0];
-    if (file) coverState.referenceImage = await fileToBase64(file);
-    else coverState.referenceImage = null;
+
+// Book Assembler Listeners
+coverFrontImageInput.addEventListener('change', e => {
+    coverState.frontCoverFile = (e.target as HTMLInputElement).files?.[0] || null;
 });
-coverAuthorInput.addEventListener('input', (e) => {
-    coverState.author = (e.target as HTMLInputElement).value;
-    updateCoverCanvas();
+coverBackImageInput.addEventListener('change', e => {
+    coverState.backCoverFile = (e.target as HTMLInputElement).files?.[0] || null;
+    updateBackCoverCanvas();
+});
+coverContentPdfInput.addEventListener('change', e => {
+    coverState.contentPdfFile = (e.target as HTMLInputElement).files?.[0] || null;
 });
 coverPriceInput.addEventListener('input', (e) => {
     coverState.price = (e.target as HTMLInputElement).value;
-    updateCoverCanvas();
+    updateBackCoverCanvas();
 });
 coverIsbnInput.addEventListener('input', (e) => {
     coverState.isbn = (e.target as HTMLInputElement).value;
-    updateCoverCanvas();
+    updateBackCoverCanvas();
 });
-downloadCoverBtn.addEventListener('click', assembleAndDownloadCover);
+barcodePlacementEl.addEventListener('change', (e) => {
+    const selected = (e.target as HTMLInputElement).value;
+    if (selected === 'left' || selected === 'center' || selected === 'right') {
+        coverState.barcodePlacement = selected;
+        updateBackCoverCanvas();
+    }
+});
+downloadCoverBtn.addEventListener('click', assembleAndDownloadPdfBook);
+
 
 // --- Initial Setup ---
 (async () => {
