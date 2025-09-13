@@ -296,7 +296,7 @@
                     <div>
                         <h3 class="font-semibold text-lg text-gray-800 mb-2">Step 2: AI Content Ideas</h3>
                         <button id="generateTitlesBtn" class="w-full bg-blue-500 text-white rounded-lg p-2 font-semibold hover:bg-blue-600 transition">Generate Titles & Captions</button>
-                        <div id="titlesSpinner" class="hidden text-center p-2">Generating...</div>
+                        <div id="titlesSpinner" class="hidden spinner p-2"></div>
                         <div id="titlesOutput" class="mt-2 space-y-2 max-h-40 overflow-y-auto"></div>
                     </div>
                      <!-- Step 3: AI Image -->
@@ -307,7 +307,10 @@
                             <input type="file" id="coverReferenceImage" accept="image/*" class="form-input-file">
                             <textarea id="coverPromptInput" rows="3" placeholder="Describe your cover art... (e.g., 'An ancient oak tree under a starry sky, minimalist style')" class="form-input w-full"></textarea>
                             <button id="generateImageBtn" class="w-full bg-purple-500 text-white rounded-lg p-2 font-semibold hover:bg-purple-600 transition">Generate Image</button>
-                            <div id="imageSpinner" class="hidden text-center p-2">Generating Image (this may take a moment)...</div>
+                            <div id="imageSpinner" class="hidden text-center p-2">
+                                <div class="spinner"></div>
+                                <p class="text-sm text-gray-600 mt-2">Generating Image (this may take a moment)...</p>
+                            </div>
                         </div>
                     </div>
                 </div>
