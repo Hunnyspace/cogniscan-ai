@@ -96,15 +96,15 @@ button:disabled {
 }
 
 /* Modal Styles */
-#summaryModal, #downloadInfoModal {
+#summaryModal, #downloadInfoModal, #followGateModal {
     transition: opacity 0.3s ease;
 }
 
-#summaryModal > div, #downloadInfoModal > div {
+#summaryModal > div, #downloadInfoModal > div, #followGateModal > div {
     transition: transform 0.3s ease;
     transform: scale(0.95);
 }
 
-#summaryModal:not(.hidden) > div, #downloadInfoModal:not(.hidden) > div {
+#summaryModal:not(.hidden) > div, #downloadInfoModal:not(.hidden) > div, #followGateModal:not(.hidden) > div {
     transform: scale(1);
 }

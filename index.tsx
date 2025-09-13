@@ -59,6 +59,10 @@ const findBtnFormatted = document.getElementById('findBtnFormatted') as HTMLButt
 const guideEl = document.getElementById('guide') as HTMLDivElement;
 const closeGuideBtn = document.getElementById('closeGuideBtn') as HTMLButtonElement;
 
+const followGateModalEl = document.getElementById('followGateModal') as HTMLDivElement;
+const followCheckboxEl = document.getElementById('followCheckbox') as HTMLInputElement;
+const continueToAppBtn = document.getElementById('continueToAppBtn') as HTMLButtonElement;
+
 const actionButtons = [extractTextBtn, smartFormatBtn, clearBtn, reformatSelectionBtn, copyFormattedTextBtn, downloadBtn, summarizeBtn];
 
 // App state
@@ -796,7 +800,37 @@ closeDownloadInfoModalBtn.addEventListener('click', () => {
     downloadInfoModalEl.classList.add('hidden');
 });
 
+
+// --- Follow Gate Modal Logic ---
+if (followGateModalEl && followCheckboxEl && continueToAppBtn) {
+    const hasSeenFollowGate = localStorage.getItem('hasSeenFollowGate');
+    if (!hasSeenFollowGate) {
+        followGateModalEl.classList.remove('hidden');
+    }
+
+    followCheckboxEl.addEventListener('change', () => {
+        continueToAppBtn.disabled = !followCheckboxEl.checked;
+        if (followCheckboxEl.checked) {
+            continueToAppBtn.classList.replace('bg-gray-400', 'bg-blue-600');
+            continueToAppBtn.classList.replace('cursor-not-allowed', 'cursor-pointer');
+            continueToAppBtn.classList.add('hover:bg-blue-700');
+        } else {
+            continueToAppBtn.classList.replace('bg-blue-600', 'bg-gray-400');
+            continueToAppBtn.classList.replace('cursor-pointer', 'cursor-not-allowed');
+            continueToAppBtn.classList.remove('hover:bg-blue-700');
+        }
+    });
+
+    continueToAppBtn.addEventListener('click', () => {
+        if (!continueToAppBtn.disabled) {
+            followGateModalEl.classList.add('hidden');
+            localStorage.setItem('hasSeenFollowGate', 'true');
+        }
+    });
+}
+
+
 // Initial Setup
 (async () => {
     await updateFormattedView();
-})();v
+})();
