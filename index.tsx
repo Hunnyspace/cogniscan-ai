@@ -258,6 +258,7 @@ async function extractTextFromPDF() {
 
     try {
         extractedPagesContent = {};
+        let totalExtractedText = '';
         const totalPages = pdfDocument.numPages;
         for (const pageNum of pageNumbers) {
             if (pageNum > 0 && pageNum <= totalPages) {
@@ -265,12 +266,13 @@ async function extractTextFromPDF() {
                 const textContent = await page.getTextContent();
                 const pageText = textContent.items.map((item: any) => item.str).join(' ');
                 extractedPagesContent[pageNum] = pageText;
+                totalExtractedText += pageText.trim();
             }
         }
         
-        if (Object.keys(extractedPagesContent).length === 0) {
-            extractedContentEl.innerHTML = 'No text found on the specified pages.';
-            showMessage(errorMessageEl, 'Could not find text on the specified pages.', 'error');
+        if (Object.keys(extractedPagesContent).length === 0 || totalExtractedText.length === 0) {
+            extractedContentEl.innerHTML = '<p class="text-gray-500">No text could be found on the specified pages. This can happen if the PDF contains only images or scanned documents without a text layer.</p>';
+            showMessage(errorMessageEl, 'Could not find any text on the specified pages.', 'error');
         } else {
             extractedCurrentPage = Math.min(...Object.keys(extractedPagesContent).map(Number));
             updateExtractedView();
@@ -344,7 +346,10 @@ async function smartFormatText() {
 
     for (const [index, pageNum] of pagesToFormat.entries()) {
         const textToFormat = extractedPagesContent[pageNum];
-        if (!textToFormat) continue;
+        if (!textToFormat || textToFormat.trim().length === 0) {
+            formattedPagesContent[pageNum] = "*(This page contained no text to format.)*";
+            continue;
+        };
 
         apiStatusMessageEl.textContent = `Formatting page ${pageNum} (${index + 1}/${pagesToFormat.length})...`;
         const userQuery = `Format the following raw text into a well-structured document. Do not remove any content. Use markdown to create appropriate headings, subheadings, bullet points, and numbered lists. Where data appears to be structured (e.g., in columns or rows), format it into a markdown table with headers. Text to format:\n\n${textToFormat}`;
